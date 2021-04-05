@@ -176,4 +176,3 @@ class City:
 
 
 		return int(math.ceil(cost * self.MAP_SCALE))
-

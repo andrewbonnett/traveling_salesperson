@@ -14,6 +14,7 @@ else:
 import time
 import numpy as np
 from TSPClasses import *
+from State import *
 import heapq
 import itertools
 
@@ -90,14 +91,14 @@ class TSPSolver:
 	def greedy( self,time_allowance=60.0 ):
 		# start timer
 		start_time = time.time()
-		# choose arbitrary index to start from
-		randStartCityIndex = random.randint(0 , len(self._scenario.getCities()) - 1)
 		# keep track of randomStartIndices in a set
 		randIndexSet = set()
 		# intialize helper_result to false to enter the while loop
 		helper_result = False
-		# if initial attempt is
+		# continue to run the helper function until we receive a valid result (within time constraint)
 		while helper_result == False and time.time()-start_time < time_allowance:
+			if not len(randIndexSet) < len(self._scenario.getCities()):
+				break
 			# choose arbitrary index to start from
 			randStartCityIndex = random.randint(0, len(self._scenario.getCities()) - 1)
 			# if the random index is in the set, select a new random index
@@ -134,7 +135,7 @@ class TSPSolver:
 		cities = self._scenario.getCities()
 		# starting from arbitrary city
 		currCity = cities[randStartCityIndex]
-		# boolean to keep track of whether we have visited all cities
+		# boolean to keep track of whether we have found a valid tour
 		foundTour = False
 		# set to make sure that we don't visit a city twice
 		citySet = set()
@@ -153,7 +154,7 @@ class TSPSolver:
 			if len(citySet) == len(cities):
 				if currCity.costTo(cities[randStartCityIndex]) != math.inf:
 					foundTour = True
-					# we do not add the first city to the route because TSPSolver._costOfRoute
+					# we do not add the first city to the route here because TSPSolver._costOfRoute
 					# will automatically add the cost from the last city to the first
 					break
 				else:
@@ -192,7 +193,38 @@ class TSPSolver:
 	'''
 		
 	def branchAndBound( self, time_allowance=60.0 ):
-		pass
+		# run greedy to get an initial
+		bssf = self.greedy()
+
+		# get cities
+		cities = self._scenario.getCities()
+
+		# initialize empty matrix of size (number of cities x number of cities)
+		unreduced_cost_matrix = [[math.inf for i in range(len(cities))] for j in range(len(cities))]
+		# initialize state 0 by constructing 2D matrix
+		for i in range(len(cities)):
+			for j in range(len(cities)):
+				unreduced_cost_matrix[i][j] = cities[i].costTo(cities[j])
+
+		# state zero is the only state that does not inherit from a parent state, so we pass in None
+		state_zero = State(None, None, None)
+		# set the matrix
+		state_zero.set_state_zero_matrix(unreduced_cost_matrix, self._scenario.getCities())
+
+		# at this point we add state zero to the queue
+		# pop state zero off of the queue
+		self.pop_off(state_zero)
+
+	def pop_off(self, parent_state):
+		addToQueue = []
+		# for all cities
+		for i in range(len(self._scenario.getCities())):
+			# if the city is not already part of the route
+			if i not in parent_state.route_set_indices:
+				addToQueue.append(State(parent_state, i, self._scenario.getCities()))
+
+		print('myleg')
+
 
 
 
