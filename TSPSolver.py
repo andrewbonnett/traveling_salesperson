@@ -197,7 +197,6 @@ class TSPSolver:
 		start_time = time.time()
 
 		# initialize variables that we will keep track of / return
-		# TODO TIME SPENT TO FIND BEST SOLUTION
 		self.number_of_solutions_found = 0 # YUP
 		self.max_queue_size = 0 # YUP
 		self.number_of_states_created = 0 # YUP
@@ -232,7 +231,7 @@ class TSPSolver:
 		heapq.heappush(self.heap_list, (state_zero.get_key(), state_zero))
 
 		# while the length of our queue is not zero
-		while len(self.heap_list) != 0:
+		while len(self.heap_list) != 0 and time.time()-start_time < time_allowance:
 			# update max queue size
 			if len(self.heap_list) > self.max_queue_size:
 				self.max_queue_size = len(self.heap_list)
@@ -253,8 +252,6 @@ class TSPSolver:
 		results['pruned'] = self.number_of_pruned_states
 
 		return results
-
-
 
 
 	def pop_off(self, parent_state):
@@ -282,17 +279,17 @@ class TSPSolver:
 					self.number_of_states_created += 1
 					# if the new state's lower bound is not infinity and is not more than bssf, then add it to the queue
 					if new_state.lower_bound != math.inf and new_state.lower_bound < self.bssf.cost:
+						new_state_key = new_state.get_key()
 						heapq.heappush(self.heap_list, (new_state.get_key(), new_state))
 
 
 	def prune(self):
 		# for each tuple in the heap_list
 		for tuple in self.heap_list:
-			# exttract the key and state object
+			# extract the key and state object
 			key, state = tuple
-			# TODO greater than or equal to? (should we prune states that have equal lower bound value)
-			# if the state's lower bound is greater than the new bssf cost
-			if state.lower_bound > self.bssf.cost:
+			# if the state's lower bound is greater than or equal to  the new bssf cost
+			if state.lower_bound >= self.bssf.cost:
 				# remove the tuple from the list
 				self.heap_list.remove(tuple)
 				# increment the number of pruned states

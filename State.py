@@ -20,6 +20,12 @@ class State:
             self.to_index = to_index
             self.visit_next_city_and_reduce(parent_state.to_index, to_index, cities)
 
+    # when a state with same lower bound and depth as another state on the queue, heapq.heappush
+    # will compare the state objects using this function
+    # __lt__ will select one to be placed 'ahead' of the other in the queue
+    def __lt__(self, other):
+        return True
+
     def set_state_zero_matrix(self, matrix, cities, randStartCityIndex):
         self.matrix = copy.deepcopy(matrix)
         self.parent_state_lower_bound = 0
@@ -72,11 +78,16 @@ class State:
         for i in range(len(self.matrix)):
             if i not in self.visited_rows:
                 cost_of_reduction += self.reduce_row(i)
+                # if cost of reduction is infinity, then no need to continue reduction (speed optimization)
+                if cost_of_reduction == math.inf:
+                    break
         # reduce columns not in visited_columns and add cost
         for i in range(len(self.matrix)):
             if i not in self.visited_columns:
                 cost_of_reduction += self.reduce_col(i)
-
+                # if cost of reduction is infinity, then no need to continue reduction (speed optimization)
+                if cost_of_reduction == math.inf:
+                    break
         # lower bound = parent state lower bound + cost of path + cost of reduction
         self.lower_bound = self.parent_state_lower_bound + cost_of_path + cost_of_reduction
 
