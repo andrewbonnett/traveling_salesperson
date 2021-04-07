@@ -193,8 +193,19 @@ class TSPSolver:
 	'''
 		
 	def branchAndBound( self, time_allowance=60.0 ):
-		# run greedy to get an initial
-		bssf = self.greedy()
+		# start timer
+		start_time = time.time()
+
+		# initialize variables that we will keep track of / return
+		# TODO TIME SPENT TO FIND BEST SOLUTION
+		self.number_of_solutions_found = 0 # YUP
+		self.max_queue_size = 0 # YUP
+		self.number_of_states_created = 0 # YUP
+		self.number_of_pruned_states = 0 # YUP
+
+		# run greedy to get an initial solution
+		# we will use bssf to keep track of the cost of the best solution and the cost
+		self.bssf = self.greedy()['soln']
 
 		# get cities
 		cities = self._scenario.getCities()
@@ -208,24 +219,84 @@ class TSPSolver:
 
 		# state zero is the only state that does not inherit from a parent state, so we pass in None
 		state_zero = State(None, None, None)
-		# set the matrix
-		state_zero.set_state_zero_matrix(unreduced_cost_matrix, self._scenario.getCities())
+		# select arbitrary start city
+		randStartCityIndex = random.randint(0, len(cities) - 1)
+		# ( this will become the from index when we start visiting cities )
+		state_zero.set_state_zero_matrix(unreduced_cost_matrix, cities, randStartCityIndex)
+		# increment number of states created
+		self.number_of_states_created += 1
+		# create a heap queue
+		self.heap_list = []
+		heapq.heapify(self.heap_list)
+		# push state zero on the queue
+		heapq.heappush(self.heap_list, (state_zero.get_key(), state_zero))
 
-		# at this point we add state zero to the queue
-		# pop state zero off of the queue
-		self.pop_off(state_zero)
+		# while the length of our queue is not zero
+		while len(self.heap_list) != 0:
+			# update max queue size
+			if len(self.heap_list) > self.max_queue_size:
+				self.max_queue_size = len(self.heap_list)
+			# call our pop_off function
+			key, state = heapq.heappop(self.heap_list)
+			self.pop_off(state)
+
+		# stop time
+		end_time = time.time()
+		# organize results and return
+		results = {}
+		results['cost'] = self.bssf.cost
+		results['count'] = self.number_of_solutions_found
+		results['soln'] = self.bssf
+		results['time'] = end_time - start_time
+		results['max'] = self.max_queue_size
+		results['total'] = self.number_of_states_created
+		results['pruned'] = self.number_of_pruned_states
+
+		return results
+
+
+
 
 	def pop_off(self, parent_state):
-		addToQueue = []
-		# for all cities
-		for i in range(len(self._scenario.getCities())):
-			# if the city is not already part of the route
-			if i not in parent_state.route_set_indices:
-				addToQueue.append(State(parent_state, i, self._scenario.getCities()))
+		# if the state has all cities in the route
+		if len(parent_state.route_set_indices) == len(self._scenario.getCities()):
+			# check that that the cost from the last to the first is not infinity
+			if parent_state.route[-1].costTo(parent_state.route[0]) != math.inf:
+				solution = TSPSolution(parent_state.route)
+				# if the cost of the solution is less than the solution we have saved, update it
+				if solution.cost < self.bssf.cost:
+					self.bssf = solution
+					# increment number of solutions found
+					self.number_of_solutions_found += 1
+					# prune states
+					self.prune()
 
-		print('myleg')
+		else:
+			# for all cities
+			for i in range(len(self._scenario.getCities())):
+				# if the city is not already part of the route
+				if i not in parent_state.route_set_indices:
+					# create new state
+					new_state = State(parent_state, i, self._scenario.getCities())
+					# increment number of states created
+					self.number_of_states_created += 1
+					# if the new state's lower bound is not infinity and is not more than bssf, then add it to the queue
+					if new_state.lower_bound != math.inf and new_state.lower_bound < self.bssf.cost:
+						heapq.heappush(self.heap_list, (new_state.get_key(), new_state))
 
 
+	def prune(self):
+		# for each tuple in the heap_list
+		for tuple in self.heap_list:
+			# exttract the key and state object
+			key, state = tuple
+			# TODO greater than or equal to? (should we prune states that have equal lower bound value)
+			# if the state's lower bound is greater than the new bssf cost
+			if state.lower_bound > self.bssf.cost:
+				# remove the tuple from the list
+				self.heap_list.remove(tuple)
+				# increment the number of pruned states
+				self.number_of_pruned_states += 1
 
 
 	''' <summary>

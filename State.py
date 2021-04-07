@@ -20,10 +20,10 @@ class State:
             self.to_index = to_index
             self.visit_next_city_and_reduce(parent_state.to_index, to_index, cities)
 
-    def set_state_zero_matrix(self, matrix, cities):
+    def set_state_zero_matrix(self, matrix, cities, randStartCityIndex):
         self.matrix = copy.deepcopy(matrix)
         self.parent_state_lower_bound = 0
-        self.depth = 0
+        self.depth = 1
 
         # keep track of the cities that we have visited
         self.route_set_indices = set()
@@ -35,7 +35,7 @@ class State:
         self.visited_rows = set()
 
         # select arbitrary start city
-        randStartCityIndex = random.randint(0, len(cities) - 1)
+
         # save the start city as the to_index
         # ( this will become the from index when we start visiting cities )
         self.to_index = randStartCityIndex
@@ -81,13 +81,12 @@ class State:
         self.lower_bound = self.parent_state_lower_bound + cost_of_path + cost_of_reduction
 
         # update route and route_set
-        # add the index to the set of visited city indices so that we don't have our route
+        # add the index to the set of visited city
         self.route_set_indices.add(to_city_index)
         self.route.append(cities[to_city_index])
-        #
 
-    def get_lower_bound_and_depth(self):
-        return self.lower_bound, self.depth
+    def get_key(self):
+        return (self.lower_bound * 2) / self.depth
 
     def reduce_state_zero_matrix(self):
         # lower bound = previous lower bound + cost of path + cost of reduction
@@ -95,11 +94,11 @@ class State:
         # reduce each row and add the cost of reduction to the lower bound
         for i in range(len(self.matrix)):
             self.lower_bound += self.reduce_row(i)
-        # reduce each  and add the cost of reduction to the lower bound
+        # reduce each column and add the cost of reduction to the lower bound
         for i in range(len(self.matrix)):
             self.lower_bound += self.reduce_col(i)
 
-    # return the amount to add to the lower bound
+    # return the amount to add to the lower bound ( cost of reduction )
     def reduce_row(self, rowIndex):
         minimum = math.inf
         for i in range(len(self.matrix)):
@@ -113,7 +112,7 @@ class State:
                 self.matrix[rowIndex][i] = self.matrix[rowIndex][i] - minimum
             return minimum
 
-
+    # return the amount to add to the lower bound ( cost of reduction )
     def reduce_col(self, columnIndex):
         minimum = math.inf
         for i in range(len(self.matrix)):
