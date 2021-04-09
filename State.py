@@ -1,9 +1,9 @@
 import math
-import random
 import copy
 
 class State:
 
+    # Space O(n^2), Time O(n) + O(n^2)
     def __init__(self, parent_state, to_index, cities):
         if parent_state != None:
             self.matrix = copy.deepcopy(parent_state.matrix)

@@ -96,6 +96,13 @@ class TSPSolver:
 		# intialize helper_result to false to enter the while loop
 		helper_result = False
 		# continue to run the helper function until we receive a valid result (within time constraint)
+		# TIME: O(n^3)
+		# worst case the while loop will run n times (n  = number of cities)
+		# worst case the inner while loop will run n times to find index of city we haven't started from
+		# greedy_helper is O(n^2) time, which is called n times in the worst case.
+		# SPACE: O(n)
+		# greedy_helper is O(n) space, which is called n times in the worst case,
+		# but each time the old solution is erase, so the space is just O(n)
 		while helper_result == False and time.time()-start_time < time_allowance:
 			if not len(randIndexSet) < len(self._scenario.getCities()):
 				break
@@ -107,6 +114,7 @@ class TSPSolver:
 			# add the random index to the set
 			randIndexSet.add(randStartCityIndex)
 			# call helper function
+			# TIME: O(n^2) SPACE: O(n)
 			helper_result = self.greedy_helper(randStartCityIndex, start_time, time_allowance)
 
 		end_time = time.time()
@@ -129,7 +137,9 @@ class TSPSolver:
 
 		return results
 
-
+	# Time Complexity is O(n^2). For each city in our partial path (n cities)
+	# we look at every other city to find the smallest cost
+	# Space Complexity is O(n) to store the route as an ordered array of cities
 	def greedy_helper( self, randStartCityIndex, start_time, time_allowance=60.0 ):
 		# get cities
 		cities = self._scenario.getCities()
@@ -140,8 +150,10 @@ class TSPSolver:
 		# set to make sure that we don't visit a city twice
 		citySet = set()
 		# route
+		# SPACE O(n)
 		route = []
 		# keep looping until path to all cities is found
+		# TIME while loop will run max n times, space is O(n)
 		while not foundTour and time.time()-start_time < time_allowance:
 			# variables to keep track of closest city and the distance to closest city
 			closestCity = None
@@ -160,6 +172,7 @@ class TSPSolver:
 				else:
 					break
 			# loop through all cities, looking for closest city
+			# TIME O(n)
 			for city in cities:
 				if city not in citySet:
 					costToCity = currCity.costTo(city)
@@ -176,6 +189,7 @@ class TSPSolver:
 
 		# if we have set tourFound equal to true in the while loop, we will return the TSPSolution object for that route
 		if foundTour == True:
+			# TIME O(n)
 			bssf = TSPSolution(route)
 			return bssf
 		else:
@@ -212,6 +226,8 @@ class TSPSolver:
 		# initialize empty matrix of size (number of cities x number of cities)
 		unreduced_cost_matrix = [[math.inf for i in range(len(cities))] for j in range(len(cities))]
 		# initialize state 0 by constructing 2D matrix
+		# TIME O(n^2)
+		# SPACE O(n^2)
 		for i in range(len(cities)):
 			for j in range(len(cities)):
 				unreduced_cost_matrix[i][j] = cities[i].costTo(cities[j])
@@ -238,6 +254,10 @@ class TSPSolver:
 			# call our pop_off function
 			key, state = heapq.heappop(self.heap_list)
 			self.pop_off(state)
+
+		# if not all states are dequeued because of termination
+		# those states will be counted as pruned
+		self.number_of_pruned_states += len(self.heap_list)
 
 		# stop time
 		end_time = time.time()
@@ -281,6 +301,9 @@ class TSPSolver:
 					if new_state.lower_bound != math.inf and new_state.lower_bound < self.bssf.cost:
 						new_state_key = new_state.get_key()
 						heapq.heappush(self.heap_list, (new_state.get_key(), new_state))
+					# if the new state is not added to the queue, then it counts as "pruned"
+					else:
+						self.number_of_pruned_states += 1
 
 
 	def prune(self):
@@ -306,7 +329,45 @@ class TSPSolver:
 	'''
 		
 	def fancy( self,time_allowance=60.0 ):
-		pass
+		# start timer
+		start_time = time.time()
+		# call greedy
+		self.bssf = self.greedy()['soln']
+		# get cities
+		cities = self._scenario.getCities()
+		route_changed = True
+		while route_changed:
+			route_changed = False
+			for i in range(len(cities)):
+				for j in range(len(cities)):
+					if i != j:
+						new_solution = self.two_opt_swap(self.bssf, i, j)
+						if new_solution.cost < self.bssf.cost:
+							self.bssf = new_solution
+							route_changed = True
+
+		end_time = time.time()
+
+		results = {}
+		results['cost'] = self.bssf.cost
+		results['count'] = 0
+		results['soln'] = self.bssf
+		results['time'] = end_time - start_time
+		results['max'] = 0
+		results['total'] = 0
+		results['pruned'] = 0
+
+		return results
+
+
+
+	def two_opt_swap(self, path, i, j):
+		swapped_path = path.route[:i] + path.route[i:j][::-1] + path.route[j:]
+		swapped_path_solution = TSPSolution(swapped_path)
+		return swapped_path_solution
+
+
+
 		
 
 
